@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Velocímetro V4 - Redondo com Alerta</title>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            user-select: none;
+            overflow: hidden;
+        }
+
+        /* * 🚨 NOVO: Animação de Alerta (Box Shadow Pulsante) 🚨
+         * Define a animação que será aplicada quando a classe 'alerta' estiver ativa.
+         */
+        @keyframes alerta-pulsar {
+            0%   { box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(0, 0, 0, 0.6); }
+            50%  { box-shadow: 0 0 30px #ff4d4d, 0 0 60px #ff4d4d, inset 0 0 20px rgba(0, 0, 0, 0.6); }
+            100% { box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(0, 0, 0, 0.6); }
+        }
+
+        /* Container principal do velocímetro */
+        .velocimetro-container {
+            width: 320px;
+            height: 320px;
+            position: relative;
+            background: radial-gradient(circle, #3a3a3a 0%, #2b2b2b 70%, #1c1c1c 100%);
+            border-radius: 50%;
+            border: 10px solid #333;
+            /* Sombra padrão, será substituída pela animação em alerta */
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), 
+                        inset 0 0 20px rgba(0, 0, 0, 0.6);
+            transition: box-shadow 0.3s ease-in-out; /* Transição suave para o efeito */
+        }
+
+        /* CLASSE A SER ADICIONADA/REMOVIDA PELO JAVASCRIPT */
+        .velocimetro-container.alerta {
+            animation: alerta-pulsar 1.5s infinite; /* Aplica a animação */
+        }
+
+        /* Marcas de velocidade (0, 40, 80...) */
+        .marcas-numeros {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .marcas-numeros span {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
+            font-weight: 600;
+            color: #d0d0d0;
+            text-shadow: 0 0 3px rgba(255, 255, 255, 0.2);
+        }
+
+        /* Posicionamento dos números ao redor do círculo (270 graus) */
+        .marcas-numeros span:nth-child(1) { transform: translate(-50%, -50%) rotate(-135deg) translateY(-135px) rotate(135deg); }
+        .marcas-numeros span:nth-child(2) { transform: translate(-50%, -50%) rotate(-90deg) translateY(-135px) rotate(90deg); }
+        .marcas-numeros span:nth-child(3) { transform: translate(-50%, -50%) rotate(-45deg) translateY(-135px) rotate(45deg); }
+        .marcas-numeros span:nth-child(4) { transform: translate(-50%, -50%) rotate(0deg) translateY(-135px) rotate(0deg); }
+        .marcas-numeros span:nth-child(5) { transform: translate(-50%, -50%) rotate(45deg) translateY(-135px) rotate(-45deg); }
+        .marcas-numeros span:nth-child(6) { transform: translate(-50%, -50%) rotate(90deg) translateY(-135px) rotate(-90deg); }
+        .marcas-numeros span:nth-child(7) { transform: translate(-50%, -50%) rotate(135deg) translateY(-135px) rotate(-135deg); }
+
+        /* Agulha (ponteiro) */
+        .agulha {
+            width: 4px;
+            height: 140px;
+            background-color: #e63946;
+            position: absolute;
+            bottom: 50%; 
+            left: 50%;
+            z-index: 10;
+            transform-origin: bottom center;
+            transform: translateX(-50%) rotate(-135deg);
+            transition: transform 0.1s ease-out;
+            box-shadow: 0 0 10px #e63946, 0 0 20px #e63946;
+            border-radius: 2px 2px 0 0;
+        }
+
+        /* Círculo central (pivô da agulha) */
+        .agulha-centro {
+            width: 20px;
+            height: 20px;
+            background: #333;
+            border: 4px solid #555;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+        }
+
+        /* Display digital da velocidade */
+        .velocidade-display {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2.2em;
+            font-weight: bold;
+            font-family: 'Courier New', Courier, monospace;
+            color: #40f8ff;
+            background-color: #0a0a0a;
+            padding: 5px 15px;
+            border-radius: 5px;
+            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5);
+            text-shadow: 0 0 5px #40f8ff, 0 0 10px #40f8ff;
+            transition: color 0.3s, text-shadow 0.3s;
+            z-index: 5;
+        }
+
+        /* Controles */
+        .controles { margin-top: 30px; display: flex; gap: 20px; }
+        .controles button {
+            padding: 15px 30px; font-size: 1.2em; font-weight: 600; color: #fff;
+            border: none; border-radius: 8px; cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+        }
+        #btn-acelerar { background-color: #2a9d8f; }
+        #btn-acelerar:active { background-color: #264653; transform: scale(0.95); }
+        #btn-frear { background-color: #e76f51; }
+        #btn-frear:active { background-color: #d90429; transform: scale(0.95); }
+    </style>
+</head>
+<body>
+
+    <div class="velocimetro-container" id="velocimetro-container">
+        
+        <div class="marcas-numeros">
+            <span>0</span>
+            <span>40</span>
+            <span>80</span>
+            <span>120</span>
+            <span>160</span>
+            <span>200</span>
+            <span>240</span>
+        </div>
+
+        <div class="agulha" id="agulha"></div>
+        <div class="agulha-centro"></div>
+        <div class="velocidade-display" id="velocidade-display">0 km/h</div>
+    </div>
+
+    <div class="controles">
+        <button id="btn-acelerar">Acelerar</button>
+        <button id="btn-frear">Frear</button>
+    </div>
+
+    <script>
+        // Seleciona os elementos do DOM
+        const container = document.getElementById('velocimetro-container'); // NOVO
+        const agulha = document.getElementById('agulha');
+        const velocidadeDisplay = document.getElementById('velocidade-display');
+        const btnAcelerar = document.getElementById('btn-acelerar');
+        const btnFrear = document.getElementById('btn-frear');
+
+        // --- Variáveis de estado e física ---
+        let velocidade = 0;
+        const maxVelocidade = 240;
+        const minVelocidade = 0;
+        
+        // NOVO: Limite de velocidade para o Alerta
+        const limiteAlerta = 200; 
+        
+        // Taxas
+        const taxaAceleracao = 1.0;
+        const taxaFrenagem = 2.5;
+        const taxaDesaceleracaoNatural = 0.3;
+
+        // Flags de estado
+        let isAcelerando = false;
+        let isFreando = false;
+
+        /**
+         * Atualiza a rotação da agulha e o display, e verifica o alerta.
+         */
+        function atualizarDisplay() {
+            // Mapeia a velocidade para a rotação de -135 a 135 graus (270 graus de arco)
+            const rotacao = (velocidade / maxVelocidade) * 270 - 135;
+            agulha.style.transform = `translateX(-50%) rotate(${rotacao}deg)`;
+
+            // Atualiza o texto
+            velocidadeDisplay.textContent = Math.round(velocidade) + ' km/h';
+
+            // --- Lógica do BOX SHADOW VERMELHO (Alerta) ---
+            if (velocidade > limiteAlerta) {
+                // Adiciona a classe 'alerta' para iniciar a animação CSS
+                container.classList.add('alerta');
+                velocidadeDisplay.style.color = '#ff4d4d'; // Altera a cor do display
+                velocidadeDisplay.style.textShadow = '0 0 5px #ff4d4d, 0 0 10px #ff4d4d';
+            } else {
+                // Remove a classe se estiver abaixo do limite
+                container.classList.remove('alerta');
+                velocidadeDisplay.style.color = '#40f8ff'; // Cor normal
+                velocidadeDisplay.style.textShadow = '0 0 5px #40f8ff, 0 0 10px #40f8ff';
+            }
+        }
+
+        /**
+         * Loop principal do "motor" do velocímetro.
+         * Roda continuamente para aplicar a física.
+         */
+        function iniciarLoopMotor() {
+            setInterval(() => {
+                if (isAcelerando) {
+                    velocidade += taxaAceleracao;
+                } else if (isFreando) {
+                    velocidade -= taxaFrenagem;
+                } else {
+                    // Desaceleração natural
+                    velocidade -= taxaDesaceleracaoNatural;
+                }
+
+                // Limita a velocidade
+                if (velocidade > maxVelocidade) velocidade = maxVelocidade;
+                if (velocidade < minVelocidade) velocidade = minVelocidade;
+                
+                // Arredonda para 0
+                if (velocidade < taxaDesaceleracaoNatural && !isFreando) {
+                    velocidade = 0;
+                }
+
+                // Atualiza os elementos visuais
+                atualizarDisplay();
+            }, 30); // Taxa de atualização (aprox. 33 FPS)
+        }
+
+        // --- Event Listeners (Ouvintes de Eventos) ---
+
+        // Acelerar
+        btnAcelerar.addEventListener('mousedown', () => { isAcelerando = true; isFreando = false; });
+        btnAcelerar.addEventListener('mouseup', () => { isAcelerando = false; });
+        btnAcelerar.addEventListener('mouseleave', () => { isAcelerando = false; });
+        btnAcelerar.addEventListener('touchstart', (e) => {
+            e.preventDefault(); 
+            isAcelerando = true; 
+            isFreando = false; 
+        });
+        btnAcelerar.addEventListener('touchend', () => { isAcelerando = false; });
+
+        // Frear
+        btnFrear.addEventListener('mousedown', () => { isFreando = true; isAcelerando = false; });
+        btnFrear.addEventListener('mouseup', () => { isFreando = false; });
+        btnFrear.addEventListener('mouseleave', () => { isFreando = false; });
+        btnFrear.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            isFreando = true; 
+            isAcelerando = false; 
+        });
+        btnFrear.addEventListener('touchend', () => { isFreando = false; });
+
+
+        // Inicializa o display e o loop na carga da página
+        atualizarDisplay();
+        iniciarLoopMotor();
+    </script>
+</body>
+</html>
